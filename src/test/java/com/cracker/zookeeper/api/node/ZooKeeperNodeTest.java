@@ -46,6 +46,11 @@ public class ZooKeeperNodeTest {
         }
     }
     
+    /**
+     * And the application will wait for further notification from the ZooKeeper ensemble.
+     * 
+     * <p>And it's disposable.
+     */
     @Test
     public void getNodeData() {
         String path = "/MyFirstZNode";
@@ -64,20 +69,34 @@ public class ZooKeeperNodeTest {
                         try {
                             byte[] tempBytes = zooKeeper.getData(path, false, null);
                             String data = new String(tempBytes, StandardCharsets.UTF_8);
-                            System.out.println("data1" + data);
+                            System.out.println("data1 = " + data);
                             connectedSignal.countDown();
                         } catch (Exception e) {
                             System.out.println(e.getMessage());
                         }
                     }
                 }, null);
-                connectedSignal.countDown();
                 String data = new String(bytes, StandardCharsets.UTF_8);
-                System.out.println("data2" + data);
+                System.out.println("data2 = " + data);
                 connectedSignal.await();
             } else {
                 System.out.println("Node does not exists");
             }
+            zooKeeperConnection.close();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+    
+    @Test
+    public void updateNode() {
+        String path = "/MyFirstZNode";
+        byte[] data = "Success".getBytes();
+        try {
+            ZooKeeperConnection zooKeeperConnection = new ZooKeeperConnection();
+            ZooKeeper zooKeeper = zooKeeperConnection.connect("localhost");
+            ZooKeeperNode zooKeeperNode = new ZooKeeperNode(zooKeeper);
+            zooKeeperNode.update(path,data);
             zooKeeperConnection.close();
         } catch (Exception e) {
             System.out.println(e.getMessage());

@@ -48,7 +48,18 @@ public class ZooKeeperNode {
      * @throws InterruptedException if the thread is interrupted
      * @throws KeeperException zookeeper exception
      */
-    public byte[] getData(final String path, Watcher watcher, Stat stat) throws InterruptedException, KeeperException {
+    public byte[] getData(final String path, final Watcher watcher, final Stat stat) throws InterruptedException, KeeperException {
         return zooKeeper.getData(path, watcher, stat);
+    }
+    
+    /**
+     * Update the data in a znode. Similar to getData but without watcher.
+     * @param path ZNode path
+     * @param data data to store in a specified ZNode path
+     * @throws InterruptedException if the thread is interrupted
+     * @throws KeeperException zookeeper exception
+     */
+    public void update(final String path, final byte[] data) throws InterruptedException, KeeperException {
+        zooKeeper.setData(path, data, exists(path).getVersion());
     }
 }
