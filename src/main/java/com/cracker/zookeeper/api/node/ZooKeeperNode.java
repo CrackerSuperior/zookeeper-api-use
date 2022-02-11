@@ -1,4 +1,4 @@
-package com.cracker.zookeeper.api.node.create;
+package com.cracker.zookeeper.api.node;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -11,7 +11,7 @@ import org.apache.zookeeper.ZooKeeper;
 @Setter
 @Getter
 @AllArgsConstructor
-public class ZooKeeperNodeCreate {
+public class ZooKeeperNode {
     
     private ZooKeeper zooKeeper;
     
@@ -25,4 +25,6 @@ public class ZooKeeperNodeCreate {
     public void create(final String path, final byte[] data) throws InterruptedException, KeeperException {
         zooKeeper.create(path, data, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
     }
+    
+    
 }

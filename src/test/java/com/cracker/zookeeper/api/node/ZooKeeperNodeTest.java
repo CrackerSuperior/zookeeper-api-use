@@ -1,10 +1,10 @@
-package com.cracker.zookeeper.api.node.create;
+package com.cracker.zookeeper.api.node;
 
 import com.cracker.zookeeper.api.connect.ZooKeeperConnection;
 import org.apache.zookeeper.ZooKeeper;
 import org.junit.Test;
 
-public class ZooKeeperNodeCreateTest {
+public class ZooKeeperNodeTest {
     
     @Test
     public void createNode() {
@@ -13,8 +13,8 @@ public class ZooKeeperNodeCreateTest {
         try {
             ZooKeeperConnection zooKeeperConnection = new ZooKeeperConnection();
             ZooKeeper zooKeeper = zooKeeperConnection.connect("localhost");
-            ZooKeeperNodeCreate zooKeeperNodeCreate = new ZooKeeperNodeCreate(zooKeeper);
-            zooKeeperNodeCreate.create(path, data);
+            ZooKeeperNode zooKeeperNode = new ZooKeeperNode(zooKeeper);
+            zooKeeperNode.create(path, data);
             zooKeeperConnection.close();
         } catch (Exception e) {
             System.out.println(e.getMessage());
