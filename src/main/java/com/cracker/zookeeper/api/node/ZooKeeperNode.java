@@ -10,6 +10,8 @@ import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 
+import java.util.List;
+
 @Setter
 @Getter
 @AllArgsConstructor
@@ -53,7 +55,7 @@ public class ZooKeeperNode {
     }
     
     /**
-     * Update the data in a znode. Similar to getData but without watcher.
+     * Update the data in a ZNode. Similar to getData but without watcher.
      * @param path ZNode path
      * @param data data to store in a specified ZNode path
      * @throws InterruptedException if the thread is interrupted
@@ -61,5 +63,29 @@ public class ZooKeeperNode {
      */
     public void update(final String path, final byte[] data) throws InterruptedException, KeeperException {
         zooKeeper.setData(path, data, exists(path).getVersion());
+    }
+    
+    /**
+     * Get all the sub-node of a particular ZNode.
+     * @param path ZNode path
+     * @param watcher callback function of type “Watcher”. The ZooKeeper ensemble will notify when the specified ZNode gets deleted or a child under the ZNode gets created or deleted.
+     * 
+     * <p></p>This is a one-time notification.
+     * @return get all the sub-node of a particular ZNode
+     * @throws InterruptedException if the thread is interrupted
+     * @throws KeeperException zookeeper exception
+     */
+    public List<String> getChildren(final String path, final Watcher watcher) throws InterruptedException, KeeperException {
+        return null == watcher ? zooKeeper.getChildren(path, false) : zooKeeper.getChildren(path, watcher);
+    }
+    
+    /**
+     * Delete a specified ZNode.
+     * @param path ZNode path
+     * @throws InterruptedException if the thread is interrupted
+     * @throws KeeperException zookeeper exception
+     */
+    public void delete(final String path) throws InterruptedException, KeeperException {
+        zooKeeper.delete(path, exists(path).getVersion());
     }
 }
