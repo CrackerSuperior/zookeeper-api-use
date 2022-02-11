@@ -7,22 +7,35 @@ import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 public class ZooKeeperNodeTest {
     
+    ZooKeeperConnection zooKeeperConnection;
+    ZooKeeper zooKeeper;
+    ZooKeeperNode zooKeeperNode;
+    
+    private void init() throws IOException, InterruptedException {
+        zooKeeperConnection = new ZooKeeperConnection();
+        zooKeeper = zooKeeperConnection.connect("localhost");
+        zooKeeperNode = new ZooKeeperNode(zooKeeper);
+    }
+    
+    private void close() throws InterruptedException {
+        zooKeeperConnection.close();
+    }
+    
     @Test
     public void createNode() {
         String path = "/MyFirstZNode";
         byte[] data = "My first zookeeper app".getBytes();
         try {
-            ZooKeeperConnection zooKeeperConnection = new ZooKeeperConnection();
-            ZooKeeper zooKeeper = zooKeeperConnection.connect("localhost");
-            ZooKeeperNode zooKeeperNode = new ZooKeeperNode(zooKeeper);
+            init();
             zooKeeperNode.create(path, data);
-            zooKeeperConnection.close();
+            close();
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -32,16 +45,14 @@ public class ZooKeeperNodeTest {
     public void existsNode() {
         String path = "/MyFirstZNode";
         try {
-            ZooKeeperConnection zooKeeperConnection = new ZooKeeperConnection();
-            ZooKeeper zooKeeper = zooKeeperConnection.connect("localhost");
-            ZooKeeperNode zooKeeperNode = new ZooKeeperNode(zooKeeper);
+            init();
             Stat stat = zooKeeperNode.exists(path);
             if(stat != null) {
                 System.out.println("Node exists and the node version is " + stat.getVersion());
             } else {
                 System.out.println("Node does not exists");
             }
-            zooKeeperConnection.close();
+            close();
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -57,9 +68,7 @@ public class ZooKeeperNodeTest {
         String path = "/MyFirstZNode";
         CountDownLatch connectedSignal = new CountDownLatch(1);
         try {
-            ZooKeeperConnection zooKeeperConnection = new ZooKeeperConnection();
-            ZooKeeper zooKeeper = zooKeeperConnection.connect("localhost");
-            ZooKeeperNode zooKeeperNode = new ZooKeeperNode(zooKeeper);
+            init();
             if (zooKeeperNode.exists(path) != null) {
                 byte[] bytes = zooKeeperNode.getData(path, watchedEvent -> {
                     if (watchedEvent.getType() == EventType.None) {
@@ -83,7 +92,7 @@ public class ZooKeeperNodeTest {
             } else {
                 System.out.println("Node does not exists");
             }
-            zooKeeperConnection.close();
+            close();
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -94,11 +103,9 @@ public class ZooKeeperNodeTest {
         String path = "/MyFirstZNode";
         byte[] data = "Success".getBytes();
         try {
-            ZooKeeperConnection zooKeeperConnection = new ZooKeeperConnection();
-            ZooKeeper zooKeeper = zooKeeperConnection.connect("localhost");
-            ZooKeeperNode zooKeeperNode = new ZooKeeperNode(zooKeeper);
+            init();
             zooKeeperNode.update(path,data);
-            zooKeeperConnection.close();
+            close();
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -110,16 +117,14 @@ public class ZooKeeperNodeTest {
         addNode("/MyFirstZNode/MyFirstSubNode", "Hi".getBytes());
         addNode("/MyFirstZNode/MySecondSubNode", "Hello".getBytes());
         try {
-            ZooKeeperConnection zooKeeperConnection = new ZooKeeperConnection();
-            ZooKeeper zooKeeper = zooKeeperConnection.connect("localhost");
-            ZooKeeperNode zooKeeperNode = new ZooKeeperNode(zooKeeper);
+            init();
             if (zooKeeperNode.exists(path) != null) {
                 List<String> children = zooKeeperNode.getChildren(path, null);
                 children.forEach(System.out::println);
             } else {
                 System.out.println("Node does not exists");
             }
-            zooKeeperConnection.close();
+            close();
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -127,11 +132,9 @@ public class ZooKeeperNodeTest {
     
     private void addNode(final String path, final byte[] data) {
         try {
-            ZooKeeperConnection zooKeeperConnection = new ZooKeeperConnection();
-            ZooKeeper zooKeeper = zooKeeperConnection.connect("localhost");
-            ZooKeeperNode zooKeeperNode = new ZooKeeperNode(zooKeeper);
+            init();
             zooKeeperNode.create(path, data);
-            zooKeeperConnection.close();
+            close();
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
@@ -141,11 +144,9 @@ public class ZooKeeperNodeTest {
     public void deleteNode() {
         String path = "/MyFirstZNode/MyFirstSubNode";
         try {
-            ZooKeeperConnection zooKeeperConnection = new ZooKeeperConnection();
-            ZooKeeper zooKeeper = zooKeeperConnection.connect("localhost");
-            ZooKeeperNode zooKeeperNode = new ZooKeeperNode(zooKeeper);
+            init();
             zooKeeperNode.delete(path);
-            zooKeeperConnection.close();
+            close();
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
