@@ -1,0 +1,54 @@
+= Zookeeper API 的简单使用
+:toc:
+:toc-title: Zookeeper API 的简单使用
+
+== 简述
+[.lead]
+ZooKeeper 为 Java 和 C 提供了官方 API 绑定。ZooKeeper 社区为大多数语言（.NET、python 等）提供了非官方 API。使用 ZooKeeper API，应用程序可以连接、交互、操作数据、协调并最终与 ZooKeeper 集成断开连接。ZooKeeper API 具有一组丰富的功能，可以以简单安全的方式获得 ZooKeeper 集成的 *所有功能* 。ZooKeeper API 提供同步和异步方法。ZooKeeper ensemble 和 ZooKeeper API 在各个方面完全互补，它极大地使开发人员受益。本文仅讨论 Java 绑定。
+
+== 前置知识
+[.lead]
+与 ZooKeeper 集成交互的应用程序称为ZooKeeper Client或简称为Client。
+*Znode 是 ZooKeeper ensemble 的核心组件*，ZooKeeper API 提供了一小组方法来使用 ZooKeeper ensemble 操作 znode 的所有细节。
+客户端应该按照下面给出的步骤与 ZooKeeper ensemble 进行清晰干净的交互。
+
+. 连接到 ZooKeeper 集合。ZooKeeper ensemble 为客户端分配一个会话 ID。
+. 定期向服务器发送心跳。否则，ZooKeeper ensemble 会使 Session ID 过期，客户端需要重新连接。
+. 只要会话 ID 处于活动状态，就获取/设置 znode。
+. 完成所有任务后，断开与 ZooKeeper 集成的连接。如果客户端长时间不活动，ZooKeeper ensemble 将自动断开客户端。
+
+== Java API
+[.lead]
+ZooKeeper API 的核心部分是 *ZooKeeper 类*。它提供了在其构造函数中连接 ZooKeeper 集合的选项，并具有以下方法
+
+* connect - 连接到 ZooKeeper 集成
+* create - 创建一个 znode
+* exists - 检查 znode 是否存在及其信息
+* getData - 从特定 znode 获取数据
+* setData - 在特定 znode 中设置数据
+* getChildren - 获取特定 znode 中可用的所有子节点
+* delete - 获取特定的 znode 及其所有子节点
+* close - 关闭连接
+
+== 代码示例
+=== 前置准备
+
+引入依赖::
+[[app-listing]]
+[source,xml]
+.pom.xml
+----
+<dependency>
+    <groupId>org.apache.zookeeper</groupId>
+    <artifactId>zookeeper</artifactId>
+    <version>3.7.0</version>
+</dependency>
+----
+
+
+
+
+
+
+
+
