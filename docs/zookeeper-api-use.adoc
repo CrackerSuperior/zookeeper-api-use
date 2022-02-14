@@ -2,11 +2,11 @@
 :toc:
 :toc-title: Zookeeper API 的简单使用
 
-== 简述
+== 1. 简述
 [.lead]
 ZooKeeper 为 Java 和 C 提供了官方 API 绑定。ZooKeeper 社区为大多数语言（.NET、python 等）提供了非官方 API。使用 ZooKeeper API，应用程序可以连接、交互、操作数据、协调并最终与 ZooKeeper 集成断开连接。ZooKeeper API 具有一组丰富的功能，可以以简单安全的方式获得 ZooKeeper 集成的 *所有功能* 。ZooKeeper API 提供同步和异步方法。ZooKeeper ensemble 和 ZooKeeper API 在各个方面完全互补，它极大地使开发人员受益。本文仅讨论 Java 绑定。
 
-== 前置知识
+== 2. 前置知识
 [.lead]
 与 ZooKeeper 集成交互的应用程序称为ZooKeeper Client或简称为Client。
 *Znode 是 ZooKeeper ensemble 的核心组件*，ZooKeeper API 提供了一小组方法来使用 ZooKeeper ensemble 操作 znode 的所有细节。
@@ -17,7 +17,7 @@ ZooKeeper 为 Java 和 C 提供了官方 API 绑定。ZooKeeper 社区为大多�
 . 只要会话 ID 处于活动状态，就获取/设置 znode。
 . 完成所有任务后，断开与 ZooKeeper 集成的连接。如果客户端长时间不活动，ZooKeeper ensemble 将自动断开客户端。
 
-== Java API
+== 3. Java API
 [.lead]
 ZooKeeper API 的核心部分是 *ZooKeeper 类*。它提供了在其构造函数中连接 ZooKeeper 集合的选项，并具有以下方法
 
@@ -30,10 +30,10 @@ ZooKeeper API 的核心部分是 *ZooKeeper 类*。它提供了在其构造函�
 * delete - 获取特定的 znode 及其所有子节点
 * close - 关闭连接
 
-== 代码示例
-=== 前置准备
+== 4. 代码示例
+=== 4.1. 前置准备
 
-引入依赖::
+4.1.1. 引入依赖::
 [[app-listing]]
 [source,xml]
 .pom.xml
@@ -44,6 +44,768 @@ ZooKeeper API 的核心部分是 *ZooKeeper 类*。它提供了在其构造函�
     <version>3.7.0</version>
 </dependency>
 ----
+
+4.1.2. 连接到 ZooKeeper 集合::
+ZooKeeper 类通过其构造函数提供连接功能。构造函数的签名如下
+[[ZooKeeper]]:
+[source,Java]
+----
+ZooKeeper(String connectionString, int sessionTimeout, Watcher watcher)
+----
+
+4.1.2.1. 参数说明::
+* connectionString - ZooKeeper 集成主机。
+* sessionTimeout - 以毫秒为单位的会话超时。
+* watcher - 一个实现“Watcher”接口的对象。ZooKeeper ensemble 通过 watcher 对象返回连接状态。
+
+4.1.2.1. 代码示例::
+我们将创建一个新的类ZooKeeperConnection并添加一个方法connect。connect方法会创建一个 ZooKeeper 对象，连接到 ZooKeeper 集合，然后返回该对象；
+这里CountDownLatch用于停止（等待）主进程，直到客户端与 ZooKeeper 成功连接。
+ZooKeeper ensemble 通过Watcher 回调回复连接状态。一旦客户端与 ZooKeeper ensemble 连接，Watcher 回调将被调用，并且 Watcher 回调调用CountDownLatch的countDown方法释放锁，在主进程中等待。
+[[ZooKeeperConnection]]
+[source,Java]
+.ZooKeeperConnection.java
+----
+package com.cracker.zookeeper.api.connect;
+
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
+import org.apache.zookeeper.ZooKeeper;
+
+import java.io.IOException;
+import java.util.concurrent.CountDownLatch;
+
+@Getter
+@Setter
+public class ZooKeeperConnection {
+
+    private ZooKeeper zooKeeper;
+
+    private final CountDownLatch connectedSignal = new CountDownLatch(1);
+
+    /**
+     * Connect zookeeper ensemble.
+     * @param host zookeeper address
+     * @return zookeeper instance
+     * @throws IOException IOException
+     * @throws InterruptedException if the thread is interrupted
+     */
+    public ZooKeeper connect(final String host) throws IOException, InterruptedException {
+        zooKeeper = new ZooKeeper(host, 5000, watchedEvent -> {
+            if (watchedEvent.getState() == KeeperState.SyncConnected) {
+                connectedSignal.countDown();
+            }
+        });
+        connectedSignal.await();
+        return zooKeeper;
+    }
+
+    /**
+     * Disconnect from zookeeper server.
+     * @throws InterruptedException if the thread is interrupted
+     */
+    public void close() throws InterruptedException {
+        zooKeeper.close();
+    }
+}
+----
+
+=== 4.2. 开始使用
+
+4.2.1. 创建一个Znode::
+ZooKeeper 类提供create 方法来在 ZooKeeper 集成中创建新的 znode。create方法的签名如下
+[[create]]:
+[source,Java]
+----
+create(String path, byte[] data, List<ACL> acl, CreateMode createMode)
+----
+4.2.1.1. 参数说明::
+* path - Znode 路径。例如，/myapp1、/myapp2、/myapp1/mydata1、myapp2/mydata1/myanothersubdata
+
+* data - 要存储在指定 znode 路径中的数据
+
+* acl - 要创建的节点的访问控制列表。ZooKeeper API 提供了一个静态接口ZooDefs.Ids来获取一些基本的 acl 列表。例如，ZooDefs.Ids.OPEN_ACL_UNSAFE 返回打开 znode 的 acl 列表。
+
+* createMode - 节点的类型，可以是临时的、顺序的或两者兼而有之。这是一个枚举。
+
+4.2.1.2. 代码示例::
+我们将创建一个新的 Java 应用程序来测试 ZooKeeper API 的节点相关功能。创建一个文件ZooKeeperNode.java。
+[[ZooKeeperNode.create]]
+[source,Java]
+.ZooKeeperNode.java
+----
+package com.cracker.zookeeper.api.node;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooDefs.Ids;
+import org.apache.zookeeper.ZooKeeper;
+
+import java.util.List;
+
+@Setter
+@Getter
+@AllArgsConstructor
+public class ZooKeeperNode {
+
+    private ZooKeeper zooKeeper;
+
+    /**
+     * Create ZNode in zookeeper ensemble.
+     * @param path ZNode path
+     * @param data ZNode data
+     * @throws InterruptedException if the thread is interrupted
+     * @throws KeeperException zookeeper exception
+     */
+    public void create(final String path, final byte[] data) throws InterruptedException, KeeperException {
+        zooKeeper.create(path, data, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+    }
+}
+----
+
+4.2.1.3. 单元测试::
+
+[[createNode]]
+[source,Java]
+.ZooKeeperNodeTest.java
+----
+package com.cracker.zookeeper.api.node;
+
+import com.cracker.zookeeper.api.connect.ZooKeeperConnection;
+import org.apache.zookeeper.Watcher.Event.EventType;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
+import org.apache.zookeeper.ZooKeeper;
+import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CountDownLatch;
+
+public class ZooKeeperNodeTest {
+
+    ZooKeeperConnection zooKeeperConnection;
+    ZooKeeper zooKeeper;
+    ZooKeeperNode zooKeeperNode;
+
+    private void init() throws IOException, InterruptedException {
+        zooKeeperConnection = new ZooKeeperConnection();
+        zooKeeper = zooKeeperConnection.connect("localhost");
+        zooKeeperNode = new ZooKeeperNode(zooKeeper);
+    }
+
+    private void close() throws InterruptedException {
+        zooKeeperConnection.close();
+    }
+
+    @Test
+    public void createNode() {
+        String path = "/MyFirstZNode";
+        byte[] data = "My first zookeeper app".getBytes();
+        try {
+            init();
+            zooKeeperNode.create(path, data);
+            close();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+}
+----
+
+4.2.1.4. 测试结果::
+
+//TODO:createNode测试结果
+
+4.2.2. 检查一个Znode是否存在::
+ZooKeeper 类提供了exists 方法来检查znode 的存在。如果指定的 znode 存在，则返回 znode 的元数据。exists方法的签名如下
+[[exists]]:
+[source,Java]
+----
+exists(String path, boolean watcher)
+----
+4.2.2.1. 参数说明::
+* 路径- Znode 路径
+* watcher - 指定是否监视指定 znode 的布尔值
+
+4.2.2.2. 代码示例::
+在ZooKeeperNode.java中添加exists方法：
+
+[[ZooKeeperNode.exists]]
+[source,Java]
+.ZooKeeperNode.java
+----
+package com.cracker.zookeeper.api.node;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooDefs.Ids;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
+
+import java.util.List;
+
+@Setter
+@Getter
+@AllArgsConstructor
+public class ZooKeeperNode {
+
+    private ZooKeeper zooKeeper;
+
+    /**
+     * Check existence of ZNode and its status, if ZNode is available.
+     * @param path ZNode path
+     * @return ZNode status
+     * @throws InterruptedException if the thread is interrupted
+     * @throws KeeperException zookeeper exception
+     */
+    public Stat exists(final String path) throws InterruptedException, KeeperException {
+        return zooKeeper.exists(path, true);
+    }
+}
+----
+
+4.2.2.3. 单元测试::
+[[existsNode]]
+[source,Java]
+.ZooKeeperNodeTest.java
+----
+package com.cracker.zookeeper.api.node;
+
+import com.cracker.zookeeper.api.connect.ZooKeeperConnection;
+import org.apache.zookeeper.Watcher.Event.EventType;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
+import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+
+public class ZooKeeperNodeTest {
+
+    ZooKeeperConnection zooKeeperConnection;
+    ZooKeeper zooKeeper;
+    ZooKeeperNode zooKeeperNode;
+
+    private void init() throws IOException, InterruptedException {
+        zooKeeperConnection = new ZooKeeperConnection();
+        zooKeeper = zooKeeperConnection.connect("localhost");
+        zooKeeperNode = new ZooKeeperNode(zooKeeper);
+    }
+
+    private void close() throws InterruptedException {
+        zooKeeperConnection.close();
+    }
+
+    @Test
+    public void existsNode() {
+        String path = "/MyFirstZNode";
+        try {
+            init();
+            Stat stat = zooKeeperNode.exists(path);
+            if(stat != null) {
+                System.out.println("Node exists and the node version is " + stat.getVersion());
+            } else {
+                System.out.println("Node does not exists");
+            }
+            close();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+}
+----
+
+4.2.2.4. 测试结果::
+//TODO:existsNode测试结果
+
+4.2.3. 获取Znode数据::
+ZooKeeper 类提供getData方法来获取附加在指定 znode 中的数据及其状态。getData方法的签名如下
+[[getData]]:
+[source,Java]
+----
+getData(String path, Watcher watcher, Stat stat)
+----
+
+4.2.3.1. 参数说明::
+* path - Znode 路径。
+* watcher - Watcher类型的回调函数。当指定 znode 的数据发生变化时，ZooKeeper ensemble 将通过 Watcher 回调进行通知。这是一次性通知。
+* stat - 返回 znode 的元数据。
+
+4.2.3.2. 代码示例::
+在ZooKeeperNode添加getData方法。
+[[ZooKeeperNode.getData]]
+[source,Java]
+.ZooKeeperNode.java
+----
+package com.cracker.zookeeper.api.node;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooDefs.Ids;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
+
+import java.util.List;
+
+@Setter
+@Getter
+@AllArgsConstructor
+public class ZooKeeperNode {
+
+    private ZooKeeper zooKeeper;
+
+    /**
+     * Get the data attached in a specified ZNode and its status.
+     * @param path ZNode path
+     * @param watcher callback function of type Watcher. The ZooKeeper ensemble will notify through the Watcher callback when the data of the specified ZNode changes. This is one-time notification
+     * @param stat returns the metadata of a ZNode.
+     * @return ZNode data
+     * @throws InterruptedException if the thread is interrupted
+     * @throws KeeperException zookeeper exception
+     */
+    public byte[] getData(final String path, final Watcher watcher, final Stat stat) throws InterruptedException, KeeperException {
+        return zooKeeper.getData(path, watcher, stat);
+    }
+}
+----
+
+4.2.3.3. 单元测试::
+[[ZooKeeperNodeTest.getData]]
+[source,Java]
+.ZooKeeperNodeTest.java
+----
+package com.cracker.zookeeper.api.node;
+
+import com.cracker.zookeeper.api.connect.ZooKeeperConnection;
+import org.apache.zookeeper.Watcher.Event.EventType;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
+import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+
+public class ZooKeeperNodeTest {
+
+    ZooKeeperConnection zooKeeperConnection;
+    ZooKeeper zooKeeper;
+    ZooKeeperNode zooKeeperNode;
+
+    private void init() throws IOException, InterruptedException {
+        zooKeeperConnection = new ZooKeeperConnection();
+        zooKeeper = zooKeeperConnection.connect("localhost");
+        zooKeeperNode = new ZooKeeperNode(zooKeeper);
+    }
+
+    private void close() throws InterruptedException {
+        zooKeeperConnection.close();
+    }
+
+    /**
+     * And the application will wait for further notification from the ZooKeeper ensemble.
+     *
+     * <p>And it's disposable.
+     */
+    @Test
+    public void getNodeData() {
+        String path = "/MyFirstZNode";
+        CountDownLatch connectedSignal = new CountDownLatch(1);
+        try {
+            init();
+            if (zooKeeperNode.exists(path) != null) {
+                byte[] bytes = zooKeeperNode.getData(path, watchedEvent -> {
+                    if (watchedEvent.getType() == EventType.None) {
+                        if (watchedEvent.getState() == KeeperState.Expired) {
+                            connectedSignal.countDown();
+                        }
+                    } else {
+                        try {
+                            byte[] tempBytes = zooKeeper.getData(path, false, null);
+                            String data = new String(tempBytes, StandardCharsets.UTF_8);
+                            System.out.println("data1 = " + data);
+                            connectedSignal.countDown();
+                        } catch (Exception e) {
+                            System.out.println(e.getMessage());
+                        }
+                    }
+                }, null);
+                String data = new String(bytes, StandardCharsets.UTF_8);
+                System.out.println("data2 = " + data);
+                connectedSignal.await();
+            } else {
+                System.out.println("Node does not exists");
+            }
+            close();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+}
+
+----
+
+4.2.3.4. 测试结果::
+//TODO:getNodeData测试结果
+
+4.2.4. 设置Znode数据::
+ZooKeeper 类提供setData方法来修改附加在指定 znode 中的数据。setData方法的签名如下
+[[setData]]:
+[source,Java]
+----
+setData(String path, byte[] data, int version)
+----
+4.2.4.1. 参数说明:::
+* 路径- Znode 路径
+* data - 要存储在指定 znode 路径中的数据。
+* version - znode 的当前版本。每当数据发生变化时，ZooKeeper 都会更新 znode 的版本号。
+
+4.2.4.2. 代码示例:::
+在ZooKeeperNode.java中添加setData方法
+[[ZooKeeperNode.setData]]
+[source,Java]
+.ZooKeeperNode.java
+----
+package com.cracker.zookeeper.api.node;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooDefs.Ids;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
+
+import java.util.List;
+
+@Setter
+@Getter
+@AllArgsConstructor
+public class ZooKeeperNode {
+
+    private ZooKeeper zooKeeper;
+
+    /**
+     * Update the data in a ZNode. Similar to getData but without watcher.
+     * @param path ZNode path
+     * @param data data to store in a specified ZNode path
+     * @throws InterruptedException if the thread is interrupted
+     * @throws KeeperException zookeeper exception
+     */
+    public void update(final String path, final byte[] data) throws InterruptedException, KeeperException {
+        zooKeeper.setData(path, data, exists(path).getVersion());
+    }
+}
+----
+
+4.2.4.3. 单元测试:::
+[[ZooKeeperNodeTest.updateData]]
+[source,Java]
+.ZooKeeperNodeTest.java
+----
+package com.cracker.zookeeper.api.node;
+
+import com.cracker.zookeeper.api.connect.ZooKeeperConnection;
+import org.apache.zookeeper.Watcher.Event.EventType;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
+import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+
+public class ZooKeeperNodeTest {
+
+    ZooKeeperConnection zooKeeperConnection;
+    ZooKeeper zooKeeper;
+    ZooKeeperNode zooKeeperNode;
+
+    private void init() throws IOException, InterruptedException {
+        zooKeeperConnection = new ZooKeeperConnection();
+        zooKeeper = zooKeeperConnection.connect("localhost");
+        zooKeeperNode = new ZooKeeperNode(zooKeeper);
+    }
+
+    private void close() throws InterruptedException {
+        zooKeeperConnection.close();
+    }
+
+    @Test
+    public void updateNode() {
+        String path = "/MyFirstZNode";
+        byte[] data = "Success".getBytes();
+        try {
+            init();
+            zooKeeperNode.update(path,data);
+            close();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+}
+----
+
+4.2.4.4. 测试结果::
+//TODO:updateNode测试结果
+
+4.2.5. 获取指定Znode数据所有字节点::
+
+ZooKeeper 类提供getChildren方法来获取特定 znode 的所有子节点。getChildren方法的签名如下
+[[getChildren]]:
+[source,Java]
+----
+getChildren(String path, Watcher watcher)
+----
+
+4.2.5.1. 参数说明::
+* path - Znode 路径。
+* watcher - “Watcher”类型的回调函数。当指定的 znode 被删除或 znode 下的子节点被创建/删除时，ZooKeeper ensemble 将发出通知。这是一次性通知。
+
+4.2.5.2. 代码示例::
+[[ZooKeeperNode.getChildren]]
+[source,Java]
+.ZooKeeperNode.java
+----
+package com.cracker.zookeeper.api.node;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooDefs.Ids;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
+
+import java.util.List;
+
+@Setter
+@Getter
+@AllArgsConstructor
+public class ZooKeeperNode {
+
+    private ZooKeeper zooKeeper;
+
+    /**
+     * Get all the sub-node of a particular ZNode.
+     * @param path ZNode path
+     * @param watcher callback function of type “Watcher”. The ZooKeeper ensemble will notify when the specified ZNode gets deleted or a child under the ZNode gets created or deleted.
+     *
+     * <p></p>This is a one-time notification.
+     * @return get all the sub-node of a particular ZNode
+     * @throws InterruptedException if the thread is interrupted
+     * @throws KeeperException zookeeper exception
+     */
+    public List<String> getChildren(final String path, final Watcher watcher) throws InterruptedException, KeeperException {
+        return null == watcher ? zooKeeper.getChildren(path, false) : zooKeeper.getChildren(path, watcher);
+    }
+}
+
+----
+
+4.2.5.3. 单元测试::
+[[ZooKeeperNodeTest.getChildren]]
+[source,Java]
+.ZooKeeperNodeTest.java
+----
+package com.cracker.zookeeper.api.node;
+
+import com.cracker.zookeeper.api.connect.ZooKeeperConnection;
+import org.apache.zookeeper.Watcher.Event.EventType;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
+import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+
+public class ZooKeeperNodeTest {
+
+    ZooKeeperConnection zooKeeperConnection;
+    ZooKeeper zooKeeper;
+    ZooKeeperNode zooKeeperNode;
+
+    private void init() throws IOException, InterruptedException {
+        zooKeeperConnection = new ZooKeeperConnection();
+        zooKeeper = zooKeeperConnection.connect("localhost");
+        zooKeeperNode = new ZooKeeperNode(zooKeeper);
+    }
+
+    private void close() throws InterruptedException {
+        zooKeeperConnection.close();
+    }
+
+    @Test
+    public void getChildrenNode() {
+        String path = "/MyFirstZNode";
+        addNode("/MyFirstZNode/MyFirstSubNode", "Hi".getBytes());
+        addNode("/MyFirstZNode/MySecondSubNode", "Hello".getBytes());
+        try {
+            init();
+            if (zooKeeperNode.exists(path) != null) {
+                List<String> children = zooKeeperNode.getChildren(path, null);
+                children.forEach(System.out::println);
+            } else {
+                System.out.println("Node does not exists");
+            }
+            close();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    private void addNode(final String path, final byte[] data) {
+        try {
+            init();
+            zooKeeperNode.create(path, data);
+            close();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+}
+
+----
+
+4.2.5.4. 测试结果::
+//TODO:getChildren测试结果
+
+4.2.5. 删除Znode::
+ZooKeeper 类提供delete方法来删除指定的 znode。删除方法的签名如下
+[[delete]]:
+[source,Java]
+----
+delete(String path, int version)
+----
+
+4.2.5.1. 参数说明::
+* path - Znode 路径。
+* version - znode 的当前版本
+
+4.2.5.2. 代码示例::
+在ZooKeeperNode.java中添加delete方法
+[[ZooKeeperNode.delete]]
+[source,Java]
+.ZooKeeperNode.java
+----
+package com.cracker.zookeeper.api.node;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooDefs.Ids;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
+
+import java.util.List;
+
+@Setter
+@Getter
+@AllArgsConstructor
+public class ZooKeeperNode {
+
+    private ZooKeeper zooKeeper;
+
+    /**
+     * Delete a specified ZNode.
+     * @param path ZNode path
+     * @throws InterruptedException if the thread is interrupted
+     * @throws KeeperException zookeeper exception
+     */
+    public void delete(final String path) throws InterruptedException, KeeperException {
+        zooKeeper.delete(path, exists(path).getVersion());
+    }
+}
+----
+
+4.2.5.3. 单元测试::
+[[ZooKeeperNodeTest]]
+[source,Java]
+.ZooKeeperNodeTest.java
+----
+package com.cracker.zookeeper.api.node;
+
+import com.cracker.zookeeper.api.connect.ZooKeeperConnection;
+import org.apache.zookeeper.Watcher.Event.EventType;
+import org.apache.zookeeper.Watcher.Event.KeeperState;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
+import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+
+public class ZooKeeperNodeTest {
+
+    ZooKeeperConnection zooKeeperConnection;
+    ZooKeeper zooKeeper;
+    ZooKeeperNode zooKeeperNode;
+
+    private void init() throws IOException, InterruptedException {
+        zooKeeperConnection = new ZooKeeperConnection();
+        zooKeeper = zooKeeperConnection.connect("localhost");
+        zooKeeperNode = new ZooKeeperNode(zooKeeper);
+    }
+
+    private void close() throws InterruptedException {
+        zooKeeperConnection.close();
+    }
+
+    @Test
+    public void deleteNode() {
+        String path = "/MyFirstZNode/MyFirstSubNode";
+        try {
+            init();
+            zooKeeperNode.delete(path);
+            close();
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+}
+
+----
+
+4.2.5.3. 测试结果::
+//TODO:deleteNode测试结果
+
+== 5. 源代码
+5.1 github仓库地址::
+https://github.com/CrackerSuperior/zookeeper-api-use[zookeeper-api-use]
+5.2 git::
+https://github.com/CrackerSuperior/zookeeper-api-use.git
 
 
 
