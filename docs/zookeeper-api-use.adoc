@@ -24,10 +24,10 @@ ZooKeeper API 的核心部分是 *ZooKeeper 类*。它提供了在其构造函�
 * connect - 连接到 ZooKeeper 集成
 * create - 创建一个 znode
 * exists - 检查 znode 是否存在及其信息
-* getData - 从特定 znode 获取数据
-* setData - 在特定 znode 中设置数据
-* getChildren - 获取特定 znode 中可用的所有子节点
-* delete - 获取特定的 znode 及其所有子节点
+* getData - 从指定 znode 获取数据
+* setData - 在指定 znode 中设置数据
+* getChildren - 获取指定 znode 中可用的所有子节点
+* delete - 获取指定的 znode 及其所有子节点
 * close - 关闭连接
 
 == 4. 代码示例
@@ -130,7 +130,7 @@ create(String path, byte[] data, List<ACL> acl, CreateMode createMode)
 * createMode - 节点的类型，可以是临时的、顺序的或两者兼而有之。这是一个枚举。
 
 4.2.1.2. 代码示例::
-我们将创建一个新的 Java 应用程序来测试 ZooKeeper API 的节点相关功能。创建一个文件ZooKeeperNode.java。
+我们将创建一个新的 Java 应用程序来测试 ZooKeeper API 的节点相关功能。创建一个文件ZooKeeperNode.java，添加create方法，该create方法调用了Zookeeper类的create方法以实现节点创建功能。
 [[ZooKeeperNode.create]]
 [source,Java]
 .ZooKeeperNode.java
@@ -169,7 +169,10 @@ public class ZooKeeperNode {
 ----
 
 4.2.1.3. 单元测试::
-
+----
+init方法将被用来获得一个zk连接，close方法则用来关闭它
+----
+使用init获得一个zk连接后，调用连接的create方法来创建一个Znode。
 [[createNode]]
 [source,Java]
 .ZooKeeperNodeTest.java
@@ -218,11 +221,15 @@ public class ZooKeeperNodeTest {
 ----
 
 4.2.1.4. 测试结果::
+创建节点测试结果如下:
+----
+使用的zk客户端程序是PrettyZoo
+----
 
-//TODO:createNode测试结果
+image::createNode.png[]
 
 4.2.2. 检查一个Znode是否存在::
-ZooKeeper 类提供了exists 方法来检查znode 的存在。如果指定的 znode 存在，则返回 znode 的元数据。exists方法的签名如下
+ZooKeeper 类提供了 exists 方法来检查 znode 的存在。如果指定的 znode 存在，则返回 znode 的元数据。exists方法的签名如下
 [[exists]]:
 [source,Java]
 ----
@@ -233,7 +240,7 @@ exists(String path, boolean watcher)
 * watcher - 指定是否监视指定 znode 的布尔值
 
 4.2.2.2. 代码示例::
-在ZooKeeperNode.java中添加exists方法：
+在 ZooKeeperNode.java 中添加 exists 方法，该 exists 方法调用了ZooKeeper的exists方法：
 
 [[ZooKeeperNode.exists]]
 [source,Java]
@@ -274,6 +281,7 @@ public class ZooKeeperNode {
 ----
 
 4.2.2.3. 单元测试::
+通过init获得一个zk连接后调用exists方法判断节点是否存在：
 [[existsNode]]
 [source,Java]
 .ZooKeeperNodeTest.java
@@ -328,7 +336,9 @@ public class ZooKeeperNodeTest {
 ----
 
 4.2.2.4. 测试结果::
-//TODO:existsNode测试结果
+判断节点是否存在测试结果如下：
+
+image::existsNode.png[]
 
 4.2.3. 获取Znode数据::
 ZooKeeper 类提供getData方法来获取附加在指定 znode 中的数据及其状态。getData方法的签名如下
@@ -344,7 +354,7 @@ getData(String path, Watcher watcher, Stat stat)
 * stat - 返回 znode 的元数据。
 
 4.2.3.2. 代码示例::
-在ZooKeeperNode添加getData方法。
+在ZooKeeperNode添加getData方法，该getData方法调用了ZooKeeper的getData方法。
 [[ZooKeeperNode.getData]]
 [source,Java]
 .ZooKeeperNode.java
@@ -386,6 +396,7 @@ public class ZooKeeperNode {
 ----
 
 4.2.3.3. 单元测试::
+这里使用了 CountDownLatch 类的方法来让获得的zk连接能够等待一次zk的节点更新。
 [[ZooKeeperNodeTest.getData]]
 [source,Java]
 .ZooKeeperNodeTest.java
@@ -464,7 +475,17 @@ public class ZooKeeperNodeTest {
 ----
 
 4.2.3.4. 测试结果::
-//TODO:getNodeData测试结果
+获得节点数据测试结果：
+
+image::getNodeData1.png[]
+
+这里可以看到线程一直在等待并返回的是第一次的数据，下面我们通过prettyZoo来更新一次数据：
+
+image::getNodeData2.png[]
+
+然后我们可以发现线程一次停止并获得更新的数据：
+
+image::getNodeData3.png[]
 
 4.2.4. 设置Znode数据::
 ZooKeeper 类提供setData方法来修改附加在指定 znode 中的数据。setData方法的签名如下
@@ -479,7 +500,7 @@ setData(String path, byte[] data, int version)
 * version - znode 的当前版本。每当数据发生变化时，ZooKeeper 都会更新 znode 的版本号。
 
 4.2.4.2. 代码示例:::
-在ZooKeeperNode.java中添加setData方法
+在 ZooKeeperNode.java 中添加 update 方法，该方法调用了 ZooKeeper 的 setData 方法，进行了简单处理：
 [[ZooKeeperNode.setData]]
 [source,Java]
 .ZooKeeperNode.java
@@ -519,6 +540,7 @@ public class ZooKeeperNode {
 ----
 
 4.2.4.3. 单元测试:::
+获得zk连接后调用 update 方法：
 [[ZooKeeperNodeTest.updateData]]
 [source,Java]
 .ZooKeeperNodeTest.java
@@ -569,10 +591,11 @@ public class ZooKeeperNodeTest {
 ----
 
 4.2.4.4. 测试结果::
-//TODO:updateNode测试结果
+更新节点数据测试结果：
+
+image::update.png[]
 
 4.2.5. 获取指定Znode数据所有字节点::
-
 ZooKeeper 类提供getChildren方法来获取特定 znode 的所有子节点。getChildren方法的签名如下
 [[getChildren]]:
 [source,Java]
@@ -585,6 +608,7 @@ getChildren(String path, Watcher watcher)
 * watcher - “Watcher”类型的回调函数。当指定的 znode 被删除或 znode 下的子节点被创建/删除时，ZooKeeper ensemble 将发出通知。这是一次性通知。
 
 4.2.5.2. 代码示例::
+在 ZooKeeperNode.java 中添加 getChildren 方法，该方法调用了 ZooKeeper 的 getChildren 方法进行了简单的处理：
 [[ZooKeeperNode.getChildren]]
 [source,Java]
 .ZooKeeperNode.java
@@ -628,6 +652,7 @@ public class ZooKeeperNode {
 ----
 
 4.2.5.3. 单元测试::
+首先调用 addNode 方法来创建两个子节点，然后再获得子节点信息：
 [[ZooKeeperNodeTest.getChildren]]
 [source,Java]
 .ZooKeeperNodeTest.java
@@ -695,7 +720,9 @@ public class ZooKeeperNodeTest {
 ----
 
 4.2.5.4. 测试结果::
-//TODO:getChildren测试结果
+获取子节点信息测试结果：
+
+image::getChildren.png[]
 
 4.2.5. 删除Znode::
 ZooKeeper 类提供delete方法来删除指定的 znode。删除方法的签名如下
@@ -710,7 +737,7 @@ delete(String path, int version)
 * version - znode 的当前版本
 
 4.2.5.2. 代码示例::
-在ZooKeeperNode.java中添加delete方法
+在ZooKeeperNode.java中添加delete方法，该方法调用了 ZooKeeper 的 delete 方法进行了简单处理：
 [[ZooKeeperNode.delete]]
 [source,Java]
 .ZooKeeperNode.java
@@ -749,6 +776,7 @@ public class ZooKeeperNode {
 ----
 
 4.2.5.3. 单元测试::
+获取zk连接后直接删除节点：
 [[ZooKeeperNodeTest]]
 [source,Java]
 .ZooKeeperNodeTest.java
@@ -799,7 +827,9 @@ public class ZooKeeperNodeTest {
 ----
 
 4.2.5.3. 测试结果::
-//TODO:deleteNode测试结果
+删除节点测试结果如下：
+
+image::delete.png[]
 
 == 5. 源代码
 5.1 github仓库地址::
