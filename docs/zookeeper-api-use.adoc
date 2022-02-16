@@ -27,7 +27,7 @@ ZooKeeper API 的核心部分是 *ZooKeeper 类*。它提供了在其构造函�
 * getData - 从指定 znode 获取数据
 * setData - 在指定 znode 中设置数据
 * getChildren - 获取指定 znode 中可用的所有子节点
-* delete - 获取指定的 znode 及其所有子节点
+* delete - 删除指定的 znode ，只能删除叶节点
 * close - 关闭连接
 
 == 4. 代码示例
